@@ -3,8 +3,7 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches:
-      - master
+    branches: [ master ]
 
 jobs:
   build:
@@ -16,8 +15,6 @@ jobs:
         include:
           - target: x86_64-pc-windows-msvc
             os: windows-2022
-          - target: aarch64-linux-android
-            os: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -25,16 +22,26 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install NASM
+        if: contains(matrix.target, 'windows')
+        uses: ilammy/setup-nasm@v1
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: vcpkg build
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '120deac3062162151622ca4860575a33844ba10b'
 
       - name: Cargo Build
         shell: bash
         env:
           RS_ID_SERVER: ${{ secrets.RS_ID_SERVER }}
           RS_PUB_KEY: ${{ secrets.RS_PUB_KEY }}
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
           cargo build --release --target ${{ matrix.target }}
 
@@ -42,6 +49,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RustDesk-${{ matrix.target }}
-          path: |
-            target/${{ matrix.target }}/release/*.exe
-            target/${{ matrix.target }}/release/*.apk
+          path: target/${{ matrix.target }}/release/*.exe
