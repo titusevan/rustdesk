@@ -1,4 +1,4 @@
-name: CI-FINAL-WIN
+name: CI-FINAL-WIN-V2
 
 on:
   workflow_dispatch:
@@ -34,8 +34,8 @@ jobs:
       - name: Install vcpkg dependencies
         shell: bash
         run: |
-          # Используем --classic чтобы обойти конфликт с vcpkg.json
-          $VCPKG_ROOT/vcpkg install libvpx libyuv opus --triplet x64-windows-static --classic
+          # Устанавливаем полный набор кодеков: vpx, opus, aom (AV1), dav1d, yuv и zlib
+          $VCPKG_ROOT/vcpkg install libvpx libyuv opus libaom dav1d zlib --triplet x64-windows-static --classic
 
       - name: Cargo Build
         shell: bash
@@ -45,7 +45,7 @@ jobs:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
           VCPKGRS_DYNAMIC: 0
         run: |
-          # Собираем релизную версию
+          # Финальная сборка с вшитыми секретами
           cargo build --release --target x86_64-pc-windows-msvc
 
       - name: Upload Artifacts
