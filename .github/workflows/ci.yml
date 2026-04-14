@@ -1,4 +1,4 @@
-name: CI
+name: CI-V4
 
 on:
   workflow_dispatch:
@@ -35,7 +35,6 @@ jobs:
         with:
           vcpkgGitCommitId: '120deac3062162151622ca4860575a33844ba10b'
 
-      # Добавляем явную установку зависимостей, которые просит компилятор
       - name: Install vcpkg dependencies
         shell: bash
         run: |
@@ -47,9 +46,8 @@ jobs:
           RS_ID_SERVER: ${{ secrets.RS_ID_SERVER }}
           RS_PUB_KEY: ${{ secrets.RS_PUB_KEY }}
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+          VCPKGRS_DYNAMIC: 0
         run: |
-          # Указываем Rust использовать статическую сборку зависимостей
-          export VCPKGRS_DYNAMIC=0
           cargo build --release --target ${{ matrix.target }}
 
       - name: Upload Artifacts
