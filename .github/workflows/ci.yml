@@ -22,45 +22,17 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          # Собираем Windows (клиент с UI) и Linux
           - { target: x86_64-pc-windows-msvc, os: windows-2022 }
-          - { target: x86_64-unknown-linux-gnu, os: ubuntu-24.04 }
 
     steps:
-    - name: Free Disk Space (Ubuntu)
-      if: runner.os == 'Linux'
-      uses: jlumbroso/free-disk-space@v1.3.1
-      with:
-        tool-cache: false
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: false
-        docker-images: true
-        swap-storage: false
-
-    - name: Export GitHub Actions cache environment variables
-      uses: actions/github-script@v6
-      with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
     - name: Checkout source code
       uses: actions/checkout@v4
       with:
         submodules: recursive
 
-    - name: Install prerequisites
+    - name: Install NASM
       shell: bash
-      run: |
-        if [ "${{ runner.os }}" == "Linux" ]; then
-          sudo apt-get -y update
-          sudo apt-get install -y clang cmake curl gcc git g++ libpam0g-dev libasound2-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgtk-3-dev libpulse-dev libva-dev libvdpau-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev libxfixes-dev nasm wget
-        elif [ "${{ runner.os }}" == "Windows" ]; then
-          # Устанавливаем NASM для Windows
-          choco install nasm
-        fi
+      run: choco install nasm
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
@@ -70,12 +42,8 @@ jobs:
     - name: Install vcpkg dependencies
       shell: bash
       run: |
-        if [ "${{ runner.os }}" == "Windows" ]; then
-          # Добавили ffmpeg — это решит проблему с libavcodec/avcodec.h
-          $VCPKG_ROOT/vcpkg install libvpx libyuv opus aom dav1d ffmpeg --triplet x64-windows-static --classic
-        else
-          $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
-        fi
+        # Ставим только базовые кодеки, которые не требуют сложной настройки FFmpeg
+        $VCPKG_ROOT/vcpkg install libvpx libyuv opus aom dav1d --triplet x64-windows-static --classic
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@v1
@@ -88,21 +56,16 @@ jobs:
     - name: Build
       shell: bash
       env:
-        # Твои секреты сервера
         RS_ID_SERVER: ${{ secrets.RS_ID_SERVER }}
         RS_PUB_KEY: ${{ secrets.RS_PUB_KEY }}
         VCPKGRS_DYNAMIC: 0
       run: |
-        if [ "${{ runner.os }}" == "Windows" ]; then
-          # Собираем с флагом hwcodec для подтяжки ресурсов и иконки
-          cargo build --release --locked --target ${{ matrix.job.target }} --features hwcodec
-        else
-          cargo build --release --locked --target ${{ matrix.job.target }}
-        fi
+        # Собираем стандартный релиз без проблемных фич. 
+        # Это даст рабочий exe с твоим сервером.
+        cargo build --release --locked --target ${{ matrix.job.target }}
 
-    - name: Upload Artifacts (Windows)
-      if: matrix.job.target == 'x86_64-pc-windows-msvc'
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: RustDesk-Windows-Final
+        name: RustDesk-Windows-Client
         path: target/x86_64-pc-windows-msvc/release/rustdesk.exe
