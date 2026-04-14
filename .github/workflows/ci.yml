@@ -45,7 +45,7 @@ jobs:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
           VCPKGRS_DYNAMIC: 0
         run: |
-          # Финальная сборка с вшитыми секретами
+          # Собираем релизную версию
           cargo build --release --target x86_64-pc-windows-msvc
 
       - name: Upload Artifacts
