@@ -1,4 +1,4 @@
-name: CI-V4
+name: CI-FINAL-WIN
 
 on:
   workflow_dispatch:
@@ -7,14 +7,10 @@ on:
 
 jobs:
   build:
-    name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    name: Build Windows EXE
+    runs-on: windows-2022
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-pc-windows-msvc
-            os: windows-2022
 
     steps:
       - name: Checkout code
@@ -28,7 +24,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: x86_64-pc-windows-msvc
 
       - name: vcpkg setup
         uses: lukka/run-vcpkg@v11
@@ -38,7 +34,8 @@ jobs:
       - name: Install vcpkg dependencies
         shell: bash
         run: |
-          $VCPKG_ROOT/vcpkg install libvpx libyuv opus --triplet x64-windows-static
+          # Используем --classic чтобы обойти конфликт с vcpkg.json
+          $VCPKG_ROOT/vcpkg install libvpx libyuv opus --triplet x64-windows-static --classic
 
       - name: Cargo Build
         shell: bash
@@ -48,10 +45,11 @@ jobs:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
           VCPKGRS_DYNAMIC: 0
         run: |
-          cargo build --release --target ${{ matrix.target }}
+          # Собираем релизную версию
+          cargo build --release --target x86_64-pc-windows-msvc
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: RustDesk-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/*.exe
+          name: RustDesk-Windows-Custom
+          path: target/x86_64-pc-windows-msvc/release/*.exe
