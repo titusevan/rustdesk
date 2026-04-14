@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          # Собираем Windows (клиент + иконки) и Linux (как в твоем оригинале)
+          # Собираем Windows (клиент с UI) и Linux
           - { target: x86_64-pc-windows-msvc, os: windows-2022 }
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-24.04 }
 
@@ -58,8 +58,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get install -y clang cmake curl gcc git g++ libpam0g-dev libasound2-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgtk-3-dev libpulse-dev libva-dev libvdpau-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev libxfixes-dev nasm wget
         elif [ "${{ runner.os }}" == "Windows" ]; then
-          # Для Windows нужен только NASM (vcpkg ставится следующим шагом)
-          echo "Installing NASM via choco..."
+          # Устанавливаем NASM для Windows
           choco install nasm
         fi
 
@@ -71,9 +70,9 @@ jobs:
     - name: Install vcpkg dependencies
       shell: bash
       run: |
-        # Для Windows ставим все кодеки статлинковкой, игнорируя манифест
         if [ "${{ runner.os }}" == "Windows" ]; then
-          $VCPKG_ROOT/vcpkg install libvpx libyuv opus aom dav1d --triplet x64-windows-static --classic
+          # Добавили ffmpeg — это решит проблему с libavcodec/avcodec.h
+          $VCPKG_ROOT/vcpkg install libvpx libyuv opus aom dav1d ffmpeg --triplet x64-windows-static --classic
         else
           $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
         fi
@@ -89,13 +88,13 @@ jobs:
     - name: Build
       shell: bash
       env:
-        # Вшиваем твои настройки сервера
+        # Твои секреты сервера
         RS_ID_SERVER: ${{ secrets.RS_ID_SERVER }}
         RS_PUB_KEY: ${{ secrets.RS_PUB_KEY }}
         VCPKGRS_DYNAMIC: 0
       run: |
-        # Собираем релиз. Для Windows добавляем hwcodec, чтобы подтянулся UI и ускорение
         if [ "${{ runner.os }}" == "Windows" ]; then
+          # Собираем с флагом hwcodec для подтяжки ресурсов и иконки
           cargo build --release --locked --target ${{ matrix.job.target }} --features hwcodec
         else
           cargo build --release --locked --target ${{ matrix.job.target }}
@@ -105,5 +104,5 @@ jobs:
       if: matrix.job.target == 'x86_64-pc-windows-msvc'
       uses: actions/upload-artifact@v4
       with:
-        name: RustDesk-Windows-Client
+        name: RustDesk-Windows-Final
         path: target/x86_64-pc-windows-msvc/release/rustdesk.exe
