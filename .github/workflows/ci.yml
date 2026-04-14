@@ -1,4 +1,4 @@
-name: CI-FINAL-WIN-V3
+name: CI-FULL-BUILD
 
 on:
   workflow_dispatch:
@@ -7,10 +7,8 @@ on:
 
 jobs:
   build:
-    name: Build Windows EXE
+    name: Build Windows Production
     runs-on: windows-2022
-    strategy:
-      fail-fast: false
 
     steps:
       - name: Checkout code
@@ -34,10 +32,9 @@ jobs:
       - name: Install vcpkg dependencies
         shell: bash
         run: |
-          # В vcpkg пакет называется 'aom', а не 'libaom'
           $VCPKG_ROOT/vcpkg install libvpx libyuv opus aom dav1d --triplet x64-windows-static --classic
 
-      - name: Cargo Build
+      - name: Cargo Build (Full Production)
         shell: bash
         env:
           RS_ID_SERVER: ${{ secrets.RS_ID_SERVER }}
@@ -45,10 +42,12 @@ jobs:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
           VCPKGRS_DYNAMIC: 0
         run: |
-          cargo build --release --target x86_64-pc-windows-msvc
+          # Добавляем --features inline для иконок и интерфейса
+          cargo build --release --locked --target x86_64-pc-windows-msvc --features inline
 
-      - name: Upload Artifacts
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RustDesk-Windows-Custom
-          path: target/x86_64-pc-windows-msvc/release/*.exe
+          name: RustDesk-Final-EXE
+          # Теперь берем только один главный файл
+          path: target/x86_64-pc-windows-msvc/release/rustdesk.exe
